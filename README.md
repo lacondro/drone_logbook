@@ -25,6 +25,9 @@
 - **기체 관리**: 감지된 기체 UID에 등록번호/별명/메모를 매핑, 기체별 필터,
   비행을 다른 기체로 **수동 재할당**(ArduPilot은 깔끔한 UUID가 없어 보완).
 - **비행별 조종사 / 특이사항**: 로그 파일에 없는 데이터이므로 SQLite에 저장.
+- **다중 선택 일괄 지정**: 리스트에서 여러 로그를 체크해 **조종사·기체를 한 번에**
+  지정(예: 같은 비행일에 시동만 한 로그들을 묶어 일괄 처리). 페이지를 넘어가도
+  선택이 유지됨.
 - **비행 삭제**: 상세 뷰에서 비행을 로그북에서 제거 + (확인 후) **디스크의 로그
   파일까지 영구 삭제**. "시동만 해본 로그" 정리에 유용 — 파일을 지워야 재스캔에서
   다시 살아나지 않음.
@@ -192,10 +195,14 @@ docker save drone-logbook:latest -o drone-logbook.tar
 1. 앱을 열고 스캔 바에 폴더 경로(예: `C:\Users\me\flightlogs`)를 입력한 뒤
    필요하면 **Recursive** 체크, **Scan** 클릭.
 2. 비행 리스트를 둘러보고, 행을 클릭하면 상세 뷰 + 지도가 열립니다.
-3. **Vehicles** 메뉴에서 등록번호를 지정하면, 리스트의 기체 필터가 등록번호
+3. **Aircrafts** 메뉴에서 등록번호를 지정하면, 리스트의 기체 필터가 등록번호
    기준으로 동작합니다.
 4. 비행 상세 페이지에서 **Pilot** / **Remarks** 입력 및 (필요 시) 다른 기체로
-   재할당 후 **Save entry**.
+   재할당 후 **Save entry**. 더 이상 필요 없는 로그는 **Delete flight**로 제거
+   (디스크 파일까지 삭제).
+5. **여러 로그 일괄 지정**: 리스트에서 카드 왼쪽 체크박스(또는 헤더 체크박스로
+   페이지 전체)를 선택하면 위에 일괄 바가 뜹니다. **Pilot** 입력 / **기체 선택**
+   후 **Apply** → 선택한 모든 로그에 한 번에 반영.
 
 PX4·ArduPilot 예제가 들어있는 `sample_logs/` 폴더가 포함되어 있습니다 —
 `…/drone_logbook/sample_logs` 를 스캔하면 바로 체험할 수 있습니다.
@@ -241,6 +248,7 @@ drone_logbook/
 | GET    | `/api/flights` | 필터(`vehicle_uid`,`stack`,`date_from`,`date_to`,`q`=파일/조종사/특이사항/위치/등록번호)·정렬(`sort`,`order`) 리스트 |
 | GET    | `/api/flights/{id}` | 상세(트랙 GeoJSON + logged messages 포함) |
 | PATCH  | `/api/flights/{id}` | `pilot` / `remarks` / `vehicle_uid`(재할당) 수정 |
+| POST   | `/api/flights/bulk` | `{ids, pilot?, vehicle_uid?}` 여러 비행에 조종사/기체 일괄 지정 |
 | DELETE | `/api/flights/{id}` | 비행 삭제. `?delete_file=true`면 디스크의 로그 파일도 삭제(로그북 폴더 내 파일만, 안전) |
 | GET    | `/api/vehicles` | 기체 목록(+비행 수, 마지막 비행) |
 | PATCH  | `/api/vehicles/{uid}` | `registration_number` / `nickname` / `notes` 수정 |

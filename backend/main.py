@@ -48,6 +48,12 @@ class FlightPatch(BaseModel):
     vehicle_uid: str | None = None  # manual re-assignment (spec §6.4)
 
 
+class BulkAssign(BaseModel):
+    ids: list[int]
+    pilot: str | None = None
+    vehicle_uid: str | None = None
+
+
 class VehiclePatch(BaseModel):
     registration_number: str | None = None
     nickname: str | None = None
@@ -173,6 +179,49 @@ def list_flights(
     finally:
         conn.close()
     return [_flight_list_row(r) for r in rows]
+
+
+@app.post("/api/flights/bulk")
+def bulk_assign(body: BulkAssign):
+    """Assign pilot and/or vehicle to many flights at once."""
+    fields: dict = {}
+    if body.pilot is not None:
+        fields["pilot"] = body.pilot
+    if body.vehicle_uid is not None:
+        fields["vehicle_uid"] = body.vehicle_uid
+    if not body.ids:
+        raise HTTPException(status_code=400, detail="no flights selected")
+    if not fields:
+        raise HTTPException(status_code=400, detail="nothing to assign")
+
+    conn = db.get_conn()
+    try:
+        # Make sure the target vehicle row exists before assigning.
+        if fields.get("vehicle_uid"):
+            v = conn.execute(
+                "SELECT vehicle_uid FROM vehicles WHERE vehicle_uid = ?",
+                (fields["vehicle_uid"],),
+            ).fetchone()
+            if v is None:
+                now = _now()
+                conn.execute(
+                    "INSERT INTO vehicles (vehicle_uid, created_at, updated_at) VALUES (?,?,?)",
+                    (fields["vehicle_uid"], now, now),
+                )
+        fields["updated_at"] = _now()
+        set_cols = list(fields.keys())
+        set_sql = ", ".join(f"{c} = ?" for c in set_cols)
+        ph = ", ".join(["?"] * len(body.ids))
+        params = [fields[c] for c in set_cols] + body.ids
+        cur = conn.execute(
+            f"UPDATE flights SET {set_sql} WHERE id IN ({ph})", params
+        )
+        conn.commit()
+        updated = cur.rowcount
+    finally:
+        conn.close()
+    db.backup_active()
+    return {"updated": updated}
 
 
 @app.get("/api/flights/{flight_id}")

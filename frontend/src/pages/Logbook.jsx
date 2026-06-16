@@ -71,6 +71,12 @@ export default function Logbook() {
   const [sort, setSort] = useState({ field: "date", order: "desc" });
   const [page, setPage] = useState(1);
 
+  // multi-select / bulk assign
+  const [selected, setSelected] = useState(() => new Set());
+  const [bulkPilot, setBulkPilot] = useState("");
+  const [bulkVehicle, setBulkVehicle] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   // scan bar
   const [scanPath, setScanPath] = useState("");
   const [recursive, setRecursive] = useState(true);
@@ -125,6 +131,48 @@ export default function Logbook() {
     () => flights.slice((pageClamped - 1) * PAGE_SIZE, pageClamped * PAGE_SIZE),
     [flights, pageClamped]
   );
+
+  const pageIds = pageFlights.map((f) => f.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+
+  function toggleSelect(id) {
+    setSelected((s) => {
+      const n = new Set(s);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  }
+  function toggleSelectAllPage() {
+    setSelected((s) => {
+      const n = new Set(s);
+      if (allPageSelected) pageIds.forEach((id) => n.delete(id));
+      else pageIds.forEach((id) => n.add(id));
+      return n;
+    });
+  }
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
+  async function applyBulk() {
+    const fields = {};
+    if (bulkPilot.trim()) fields.pilot = bulkPilot.trim();
+    if (bulkVehicle) fields.vehicle_uid = bulkVehicle;
+    if (!selected.size || !Object.keys(fields).length) return;
+    setBulkBusy(true);
+    setError(null);
+    try {
+      await api.bulkAssign([...selected], fields);
+      clearSelection();
+      setBulkPilot("");
+      setBulkVehicle("");
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   async function runScan() {
     if (!scanPath.trim()) return;
@@ -250,6 +298,13 @@ export default function Logbook() {
         <div className="split-left">
           <div className="list-head">
             <span className="strong">
+              <input
+                type="checkbox"
+                className="fc-check"
+                checked={allPageSelected}
+                onChange={toggleSelectAllPage}
+                title="Select all on this page"
+              />{" "}
               Flights <span className="muted">({flights.length})</span>
               {loading && <span className="muted"> · loading…</span>}
             </span>
@@ -277,15 +332,56 @@ export default function Logbook() {
             </span>
           </div>
 
+          {selected.size > 0 && (
+            <div className="bulk-bar">
+              <span className="strong">{selected.size} selected</span>
+              <input
+                className="input sm"
+                placeholder="Pilot"
+                value={bulkPilot}
+                onChange={(e) => setBulkPilot(e.target.value)}
+              />
+              <select
+                className="input sm"
+                value={bulkVehicle}
+                onChange={(e) => setBulkVehicle(e.target.value)}
+              >
+                <option value="">Assign vehicle…</option>
+                {vehicles.map((v) => (
+                  <option key={v.vehicle_uid} value={v.vehicle_uid}>
+                    {v.registration_number || v.nickname || v.vehicle_uid}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn sm primary"
+                disabled={bulkBusy || (!bulkPilot.trim() && !bulkVehicle)}
+                onClick={applyBulk}
+              >
+                {bulkBusy ? "…" : "Apply"}
+              </button>
+              <button className="btn sm ghost" onClick={clearSelection}>
+                Clear
+              </button>
+            </div>
+          )}
+
           <div className="flight-cards">
             {pageFlights.map((f) => {
               const badge = STACK_BADGE[f.stack] || { label: f.stack || "?", cls: "" };
               return (
-                <button
-                  key={f.id}
-                  className={`flight-card ${f.id === selectedId ? "selected" : ""}`}
-                  onClick={() => navigate(`/flights/${f.id}`)}
-                >
+                <div key={f.id} className="flight-card-row">
+                  <input
+                    type="checkbox"
+                    className="fc-check"
+                    checked={selected.has(f.id)}
+                    onChange={() => toggleSelect(f.id)}
+                    aria-label="Select flight"
+                  />
+                  <button
+                    className={`flight-card ${f.id === selectedId ? "selected" : ""}`}
+                    onClick={() => navigate(`/flights/${f.id}`)}
+                  >
                   <div className="fc-row1">
                     <span className="fc-date">
                       {fmtDateTime(f.log_start_utc)}
@@ -313,7 +409,8 @@ export default function Logbook() {
                     {fmtDuration(f.duration_s)} · {fmtDistance(f.distance_m)}
                     {f.pilot ? ` · ${f.pilot}` : ""}
                   </div>
-                </button>
+                  </button>
+                </div>
               );
             })}
             {!pageFlights.length && !loading && (

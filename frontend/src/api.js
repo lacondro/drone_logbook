@@ -34,6 +34,7 @@ export const api = {
   patchFlight: (id, patch) => req("PATCH", `/flights/${id}`, patch),
   deleteFlight: (id, deleteFile = false) =>
     req("DELETE", `/flights/${id}?delete_file=${deleteFile ? "true" : "false"}`),
+  bulkAssign: (ids, fields) => req("POST", "/flights/bulk", { ids, ...fields }),
   listVehicles: () => req("GET", "/vehicles"),
   patchVehicle: (uid, patch) =>
     req("PATCH", `/vehicles/${encodeURIComponent(uid)}`, patch),

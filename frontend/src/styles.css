@@ -1,0 +1,819 @@
+:root {
+  --bg: #0f172a;
+  --panel: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --brand: #2563eb;
+  --brand-dark: #1d4ed8;
+  --px4: #0ea5e9;
+  --ap: #22c55e;
+  --ok: #16a34a;
+  --warn: #d97706;
+  --err: #dc2626;
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+}
+body {
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background: #f1f5f9;
+  font-size: 14px;
+}
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+code {
+  font-family: "JetBrains Mono", ui-monospace, "Consolas", monospace;
+  font-size: 0.85em;
+  background: #f1f5f9;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* ---------- layout ---------- */
+.app {
+  min-height: 100vh;
+}
+.topbar {
+  background: var(--bg);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand-mark {
+  font-size: 22px;
+  background: var(--brand);
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+}
+.brand-title {
+  font-weight: 700;
+  font-size: 16px;
+}
+.brand-sub {
+  font-size: 11px;
+  color: #94a3b8;
+}
+.topnav {
+  display: flex;
+  gap: 6px;
+}
+.topnav a {
+  color: #cbd5e1;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+.topnav a:hover {
+  background: rgba(255, 255, 255, 0.08);
+  text-decoration: none;
+}
+.topnav a.active {
+  background: var(--brand);
+  color: #fff;
+}
+.content {
+  max-width: none;
+  margin: 0 auto;
+  padding: 24px;
+}
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* Keep these list pages readable on ultrawide screens (Flights uses .logbook
+     and stays full width). */
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+}
+
+/* ---------- cards ---------- */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+.card h2 {
+  margin: 0 0 14px;
+  font-size: 15px;
+  font-weight: 600;
+}
+h1 {
+  font-size: 22px;
+  margin: 0;
+}
+
+/* ---------- inputs ---------- */
+.input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  font: inherit;
+  background: #fff;
+  color: var(--ink);
+  outline: none;
+}
+.input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--ink);
+}
+.btn:hover {
+  background: #f8fafc;
+}
+.btn.primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+.btn.primary:hover {
+  background: var(--brand-dark);
+}
+.btn.primary:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.btn.ghost {
+  border: none;
+  color: var(--brand);
+  background: transparent;
+}
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---------- scan / filter bars ---------- */
+/* Scan card and filter card share one row, 5:5. */
+.topbars {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+.topbars > .card {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+}
+/* Filter on the left, Scan on the right. */
+.topbars > .filters {
+  order: 1;
+}
+.topbars > .scanbar {
+  order: 2;
+}
+@media (max-width: 900px) {
+  .topbars {
+    flex-direction: column;
+  }
+}
+.scanbar-row,
+.filters {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.scan-result {
+  margin-top: 10px;
+  color: var(--ok);
+  font-size: 13px;
+}
+.scan-active {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+/* ---------- table ---------- */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th,
+.table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.table th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  font-weight: 600;
+}
+.table td.num,
+.table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.sortable:hover {
+  color: var(--ink);
+}
+.rowlink {
+  cursor: pointer;
+}
+.rowlink:hover {
+  background: #f8fafc;
+}
+.strong {
+  font-weight: 600;
+}
+.filecell {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 36px;
+}
+.table-head-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+/* ---------- badges & pills ---------- */
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--muted);
+}
+.badge-px4 {
+  background: var(--px4);
+}
+.badge-ap {
+  background: var(--ap);
+}
+.pill {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.pill-ok {
+  background: #dcfce7;
+  color: var(--ok);
+}
+.pill-warn {
+  background: #fef3c7;
+  color: var(--warn);
+}
+.pill-err {
+  background: #fee2e2;
+  color: var(--err);
+}
+.muted {
+  color: var(--muted);
+}
+
+/* ---------- banners ---------- */
+.banner {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.banner.error {
+  background: #fee2e2;
+  color: var(--err);
+}
+.banner.warn {
+  background: #fef3c7;
+  color: var(--warn);
+}
+.banner.inline {
+  display: inline-block;
+  padding: 4px 10px;
+}
+
+/* ---------- detail ---------- */
+.detail-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.detail-top h1 {
+  margin: 0;
+}
+.back {
+  font-weight: 600;
+}
+/* 2×2 detail grid — row1: vehicle/stats | logbook entry, row2: track | messages.
+   Row 1 sizes to content; row 2 is a viewport-proportional band so the map and
+   the message list always share the same (responsive) height. Every cell
+   stretches to its row height — no fixed pixel heights. */
+.detail-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto minmax(240px, 42vh);
+  gap: 16px;
+}
+.detail-cols > * {
+  min-width: 0;
+  min-height: 0; /* let inner scroll areas shrink instead of overflowing */
+}
+
+/* Bottom-row cards fill their cell; inner content scrolls/expands to fit. */
+.map-card,
+.msgs-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.map-card .map-wrap {
+  flex: 1;
+  min-height: 0;
+}
+.msgs-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+/* Keep the message table header visible while the list scrolls. */
+.msgs-scroll thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.inforow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.inforow:last-child {
+  border-bottom: none;
+}
+.info-label {
+  color: var(--muted);
+}
+.info-value {
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* ---------- map ---------- */
+.map-wrap {
+  position: relative;
+}
+.map {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  border-radius: 8px;
+  z-index: 1;
+}
+.map-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 500;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(241, 245, 249, 0.85);
+  color: var(--muted);
+  font-weight: 600;
+  z-index: 400;
+  border-radius: 8px;
+}
+
+/* ---------- forms ---------- */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.field textarea {
+  resize: vertical;
+}
+.hint {
+  font-size: 12px;
+  color: var(--muted) !important;
+  font-weight: 400 !important;
+}
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+.saved {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+/* ---------- logged messages ---------- */
+.msgs td {
+  white-space: normal;
+}
+.lvl {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 5px;
+}
+.lvl-err {
+  background: #fee2e2;
+  color: var(--err);
+}
+.lvl-warn {
+  background: #fef3c7;
+  color: var(--warn);
+}
+.lvl-info {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.lvl-dim {
+  background: #f1f5f9;
+  color: var(--muted);
+}
+.filefoot {
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ---------- vehicles ---------- */
+.vehicle-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.vehicle-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.vehicle-title {
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vehicle-uid {
+  display: inline-block;
+  margin-top: 4px;
+}
+.vehicle-meta {
+  text-align: right;
+  font-size: 13px;
+}
+.vehicle-fields {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.vehicle-fields .field {
+  min-width: 150px;
+}
+.vehicle-save {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vehicle-derived {
+  font-size: 12px;
+}
+
+/* ---------- pilots ---------- */
+.pilot-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pilot-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pilot-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+.pilot-totals {
+  display: flex;
+  gap: 22px;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+.stat-val {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.stat-lbl {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.pilot-vehicles th,
+.pilot-vehicles td {
+  padding: 8px 12px;
+}
+
+/* ---------- master-detail split ---------- */
+.logbook {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.split {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.split-left {
+  width: 420px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 84px;
+  max-height: calc(100vh - 104px);
+  display: flex;
+  flex-direction: column;
+}
+.split-right {
+  flex: 1;
+  min-width: 0;
+  position: sticky;
+  top: 84px;
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 10px;
+}
+.sort-ctrl {
+  display: flex;
+  gap: 6px;
+}
+.input.sm,
+.btn.sm {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+/* compact flight list cards */
+.flight-cards {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+  flex: 1;
+}
+.flight-card {
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.12s, background 0.12s;
+}
+.flight-card:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+.flight-card.selected {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  background: #f5f8ff;
+}
+.fc-row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fc-date {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.fc-loc {
+  font-weight: 600;
+  color: var(--brand);
+}
+.fc-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fc-row2 {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.fc-vehicle {
+  font-weight: 600;
+  color: var(--brand-dark);
+  white-space: nowrap;
+}
+.fc-file {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fc-row3 {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* pagination */
+.pager {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  padding-top: 12px;
+  flex-wrap: wrap;
+}
+.pager-gap {
+  color: var(--muted);
+  padding: 0 2px;
+}
+
+/* detail panel placeholder */
+.detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 100%;
+  text-align: center;
+  background: var(--panel);
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+}
+.detail-empty-icon {
+  font-size: 30px;
+  opacity: 0.5;
+}
+/* when detail is a panel, its inner cards get a subtle border to separate */
+.split-right .detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.split-right .detail .card {
+  border-color: var(--line);
+}
+
+@media (max-width: 1080px) {
+  .split {
+    flex-direction: column;
+  }
+  .split-left {
+    width: 100%;
+    position: static;
+    max-height: none;
+  }
+  .split-right {
+    width: 100%;
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+@media (max-width: 820px) {
+  .detail-cols,
+  .detail-grid,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  /* Stacked: rows flow naturally; give map/messages a proportional height. */
+  .detail-cols {
+    grid-template-rows: none;
+  }
+  .map-card,
+  .msgs-card {
+    height: 60vh;
+  }
+}
+
+/* Wide desktop: the detail panel sticks below the top bar and scrolls
+   internally when its content is taller than the viewport, so the bottom (map /
+   messages) is always reachable. The page itself can still scroll as a fallback
+   on shorter windows — nothing ever gets clipped out of reach. */
+@media (min-width: 1081px) {
+  .split-right {
+    display: flex;
+    flex-direction: column;
+  }
+  .split-right .detail {
+    /* Let the detail fill the sticky panel; if it's taller, .split-right
+       (overflow-y: auto) provides the scroll. */
+    min-height: 0;
+  }
+}

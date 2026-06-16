@@ -1,0 +1,12 @@
+**/.venv
+**/node_modules
+**/__pycache__
+**/dist
+*.pyc
+backend/logbook.db
+backend/.active_db
+**/flightlogbook.db
+**/flightlogbook.db.bak
+.git
+sample_logs
+*.log

@@ -1,0 +1,31 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+backend/logbook.db
+backend/.active_db
+
+# Per-folder logbook DB created next to scanned logs
+flightlogbook.db
+flightlogbook.db.bak
+flightlogbook.db.pre-dedup.bak
+
+# Sample logs: keep only a few small ones as demo data (PX4 .ulg + ArduPilot .bin)
+sample_logs/*.ulg
+sample_logs/*.bin
+!sample_logs/04_13_14.ulg
+!sample_logs/04_41_36.ulg
+!sample_logs/log_0_2026-6-12-11-09-06.bin
+!sample_logs/log_2_2026-6-12-11-51-34.bin
+
+# Node / Vite
+frontend/node_modules/
+frontend/dist/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Stray debug screenshot
+backend/_shot_veh.png

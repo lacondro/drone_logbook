@@ -1,0 +1,23 @@
+# Drone Flight Logbook — NAS / Portainer deployment (single shared log folder).
+#
+# 1) Edit the volume line below: replace the left side with your NAS log share.
+# 2) In Portainer: Stacks → Add stack → (Repository or Web editor) → deploy.
+#    The container scans /logs (your mounted share) and stores the logbook DB
+#    at /logs/flightlogbook.db so annotations live with the logs.
+# 3) Open http://<NAS-IP>:8137
+
+services:
+  logbook:
+    build: .
+    image: drone-logbook:latest
+    container_name: drone-logbook
+    ports:
+      - "8137:8137"
+    volumes:
+      # LEFT = path to your flight logs on the NAS  →  RIGHT = fixed path in container
+      - /volume1/flightlogs:/logs
+    environment:
+      - LOGBOOK_DEFAULT_FOLDER=/logs
+      # Timezone for displayed local times (optional)
+      - TZ=Asia/Seoul
+    restart: unless-stopped

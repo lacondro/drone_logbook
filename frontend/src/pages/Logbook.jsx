@@ -134,7 +134,8 @@ export default function Logbook() {
     try {
       const r = await api.scan(scanPath.trim(), recursive);
       setScanMsg(
-        `Scanned ${r.scanned} · new ${r.parsed_new} · cached ${r.skipped_cached} · failed ${r.failed}`
+        `Scanned ${r.scanned} · new ${r.parsed_new} · cached ${r.skipped_cached} · failed ${r.failed}` +
+          (r.pruned_missing ? ` · removed ${r.pruned_missing} missing` : "")
       );
       setActiveFolder(r.folder);
       await load();

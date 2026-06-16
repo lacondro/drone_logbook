@@ -98,7 +98,10 @@ def scan_folder(folder_path: str, recursive: bool = True) -> dict:
     _db.set_active_db(_db.db_for_folder(folder))
 
     files = discover(folder, recursive)
-    summary = {"scanned": len(files), "parsed_new": 0, "skipped_cached": 0, "failed": 0}
+    summary = {
+        "scanned": len(files), "parsed_new": 0, "skipped_cached": 0,
+        "failed": 0, "pruned_missing": 0,
+    }
 
     conn = get_conn()
     try:
@@ -136,6 +139,22 @@ def scan_folder(folder_path: str, recursive: bool = True) -> dict:
                 ph = ", ".join(f":{k}" for k in row)
                 conn.execute(f"INSERT INTO flights ({cols}) VALUES ({ph})", row)
             conn.commit()
+
+        # Prune stale rows: logs whose file no longer exists on disk (e.g. moved,
+        # renamed, or deleted outside the app). This stops a re-scan from showing
+        # duplicates left over from an old path — like an earlier DB that still
+        # referenced the logs under a previous folder name.
+        rows = conn.execute("SELECT id, file_path FROM flights").fetchall()
+        missing = [r for r in rows if not os.path.exists(r["file_path"])]
+        # Safety: don't wipe the logbook if a transient mount failure makes every
+        # file look missing. Only prune when this scan saw files AND at least one
+        # row still resolves to an existing file.
+        if rows and missing and len(missing) < len(rows):
+            conn.executemany(
+                "DELETE FROM flights WHERE id = ?", [(r["id"],) for r in missing]
+            )
+            conn.commit()
+            summary["pruned_missing"] = len(missing)
     finally:
         conn.close()
 

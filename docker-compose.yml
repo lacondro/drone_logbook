@@ -1,14 +1,18 @@
 # Drone Flight Logbook — NAS / Portainer deployment (single shared log folder).
 #
-# 1) Edit the volume line below: replace the left side with your NAS log share.
-# 2) In Portainer: Stacks → Add stack → (Repository or Web editor) → deploy.
-#    The container scans /logs (your mounted share) and stores the logbook DB
-#    at /logs/flightlogbook.db so annotations live with the logs.
-# 3) Open http://<NAS-IP>:8137
+# This expects the image `drone-logbook:latest` to ALREADY be present in the
+# NAS's Docker (loaded from a tar you built on your PC — see README/instructions),
+# so the NAS never compiles anything; it just runs the prebuilt image.
+#
+# 1) Build on your PC:   docker build -t drone-logbook:latest .
+# 2) Export:             docker save drone-logbook:latest -o drone-logbook.tar
+# 3) Portainer → Images → Import → upload drone-logbook.tar
+# 4) Edit the volume line below to your NAS log share, then
+#    Portainer → Stacks → Add stack → Web editor → paste this → Deploy.
+# 5) Open http://<NAS-IP>:8137  and click Scan.
 
 services:
   logbook:
-    build: .
     image: drone-logbook:latest
     container_name: drone-logbook
     ports:

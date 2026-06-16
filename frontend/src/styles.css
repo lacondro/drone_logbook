@@ -180,6 +180,17 @@ h1 {
   color: var(--brand);
   background: transparent;
 }
+.btn.danger {
+  border-color: #fecaca;
+  color: #dc2626;
+}
+.btn.danger:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+.push-right {
+  margin-left: auto;
+}
 .checkbox {
   display: flex;
   align-items: center;

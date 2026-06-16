@@ -233,6 +233,47 @@ def patch_flight(flight_id: int, patch: FlightPatch):
     return get_flight(flight_id)
 
 
+@app.delete("/api/flights/{flight_id}")
+def delete_flight(flight_id: int, delete_file: bool = False):
+    """Remove a flight from the logbook. With delete_file=true, also delete the
+    underlying log file from disk (so a re-scan won't bring it back).
+
+    Safety: a file is only unlinked when it lives inside the active logbook
+    folder, never an arbitrary path.
+    """
+    conn = db.get_conn()
+    try:
+        row = conn.execute(
+            "SELECT id, file_path FROM flights WHERE id = ?", (flight_id,)
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="flight not found")
+        file_path = row["file_path"]
+        conn.execute("DELETE FROM flights WHERE id = ?", (flight_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    file_deleted = False
+    file_error = None
+    if delete_file and file_path:
+        try:
+            p = Path(file_path).resolve()
+            folder = db.get_db_path().parent.resolve()
+            # Only delete files that live under the logbook folder.
+            if folder == p.parent or folder in p.parents:
+                if p.exists():
+                    p.unlink()
+                    file_deleted = True
+            else:
+                file_error = "file is outside the logbook folder; not deleted"
+        except OSError as e:
+            file_error = str(e)
+
+    db.backup_active()
+    return {"deleted": True, "file_deleted": file_deleted, "file_error": file_error}
+
+
 # ---------------------------------------------------------------------------
 # Vehicles
 # ---------------------------------------------------------------------------

@@ -32,6 +32,8 @@ export const api = {
   },
   getFlight: (id) => req("GET", `/flights/${id}`),
   patchFlight: (id, patch) => req("PATCH", `/flights/${id}`, patch),
+  deleteFlight: (id, deleteFile = false) =>
+    req("DELETE", `/flights/${id}?delete_file=${deleteFile ? "true" : "false"}`),
   listVehicles: () => req("GET", "/vehicles"),
   patchVehicle: (uid, patch) =>
     req("PATCH", `/vehicles/${encodeURIComponent(uid)}`, patch),

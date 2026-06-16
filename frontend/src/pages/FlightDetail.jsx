@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import MapTrack from "../components/MapTrack.jsx";
 import { fmtDuration, fmtDateTime, fmtDistance, fmtNum } from "../format.js";
@@ -28,6 +28,7 @@ function levelLabel(m) {
 
 export default function FlightDetail({ id: propId, onUpdated }) {
   const params = useParams();
+  const navigate = useNavigate();
   const id = propId ?? params.id;
   const panel = propId !== undefined; // rendered as the right-hand panel
   const [f, setF] = useState(null);
@@ -60,6 +61,22 @@ export default function FlightDetail({ id: propId, onUpdated }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function remove() {
+    const ok = window.confirm(
+      `Delete this flight from the logbook AND permanently delete the log file ` +
+        `from the server?\n\n${f.file_name}\n\nThis cannot be undone.`
+    );
+    if (!ok) return;
+    setError(null);
+    try {
+      await api.deleteFlight(f.id, true);
+      onUpdated && onUpdated(); // refresh the list
+      navigate("/"); // clear the now-deleted selection
+    } catch (e) {
+      setError(e.message);
+    }
+  }
 
   async function save() {
     setError(null);
@@ -194,6 +211,13 @@ export default function FlightDetail({ id: propId, onUpdated }) {
           </button>
           {saved && <span className="saved">✓ Saved</span>}
           {error && <span className="banner error inline">{error}</span>}
+          <button
+            className="btn danger push-right"
+            onClick={remove}
+            title="Delete this flight and its log file from the server"
+          >
+            Delete flight
+          </button>
         </div>
       </section>
 

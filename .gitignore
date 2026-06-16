@@ -18,6 +18,10 @@ sample_logs/*.bin
 !sample_logs/log_0_2026-6-12-11-09-06.bin
 !sample_logs/log_2_2026-6-12-11-51-34.bin
 
+# Docker image export (build artifact — rebuild with `docker save`)
+*.tar
+*.tar.gz
+
 # Node / Vite
 frontend/node_modules/
 frontend/dist/

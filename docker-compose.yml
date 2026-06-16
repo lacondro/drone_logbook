@@ -15,7 +15,7 @@ services:
       - "8137:8137"
     volumes:
       # LEFT = path to your flight logs on the NAS  →  RIGHT = fixed path in container
-      - /volume1/flightlogs:/logs
+      - /volume1/WizFlightHub/logs:/logs
     environment:
       - LOGBOOK_DEFAULT_FOLDER=/logs
       # Timezone for displayed local times (optional)

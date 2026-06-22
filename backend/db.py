@@ -87,7 +87,8 @@ CREATE TABLE IF NOT EXISTS flights (
 
 CREATE INDEX IF NOT EXISTS idx_flights_vehicle ON flights(vehicle_uid);
 CREATE INDEX IF NOT EXISTS idx_flights_start   ON flights(log_start_utc);
-CREATE INDEX IF NOT EXISTS idx_flights_content ON flights(content_hash);
+-- idx_flights_content is created in _migrate(), after the content_hash column is
+-- guaranteed to exist (existing DBs add it via ALTER there first).
 
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 

@@ -35,6 +35,18 @@ function VehicleRow({ v, onSaved }) {
     }
   }
 
+  async function remove() {
+    const label = reg || nick || v.vehicle_uid;
+    if (!window.confirm(`Delete aircraft "${label}"?`)) return;
+    setErr(null);
+    try {
+      await api.deleteVehicle(v.vehicle_uid);
+      onSaved && onSaved();
+    } catch (e) {
+      setErr(e.message);
+    }
+  }
+
   return (
     <div className="card vehicle-card">
       <div className="vehicle-head">
@@ -90,6 +102,18 @@ function VehicleRow({ v, onSaved }) {
             {saving ? "…" : "Save"}
           </button>
           {saved && <span className="saved">✓</span>}
+          <button
+            className="btn danger sm"
+            onClick={remove}
+            disabled={v.flight_count > 0}
+            title={
+              v.flight_count > 0
+                ? "Reassign its flights before deleting"
+                : "Delete this aircraft"
+            }
+          >
+            Delete
+          </button>
         </div>
       </div>
       <div className="vehicle-derived muted">
@@ -105,6 +129,9 @@ export default function Vehicles() {
   const [vehicles, setVehicles] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [newReg, setNewReg] = useState("");
+  const [newNick, setNewNick] = useState("");
+  const [adding, setAdding] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -121,6 +148,25 @@ export default function Vehicles() {
     load();
   }, []);
 
+  async function addVehicle() {
+    if (!newReg.trim() && !newNick.trim()) return;
+    setAdding(true);
+    setError(null);
+    try {
+      await api.createVehicle({
+        registration_number: newReg.trim() || null,
+        nickname: newNick.trim() || null,
+      });
+      setNewReg("");
+      setNewNick("");
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAdding(false);
+    }
+  }
+
   return (
     <div className="page">
       <div className="table-head-row">
@@ -130,7 +176,33 @@ export default function Vehicles() {
       <p className="muted">
         Map each detected vehicle to a registration number. PX4 logs are matched
         by <code>sys_uuid</code>; ArduPilot logs use the board CPU id when present.
+        Add aircraft manually below, or delete ones with no flights.
       </p>
+
+      <div className="card add-row">
+        <input
+          className="input"
+          placeholder="Registration # (e.g. WZ-001)"
+          value={newReg}
+          onChange={(e) => setNewReg(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addVehicle()}
+        />
+        <input
+          className="input"
+          placeholder="Nickname (optional)"
+          value={newNick}
+          onChange={(e) => setNewNick(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addVehicle()}
+        />
+        <button
+          className="btn primary"
+          onClick={addVehicle}
+          disabled={adding || (!newReg.trim() && !newNick.trim())}
+        >
+          {adding ? "…" : "+ Add aircraft"}
+        </button>
+      </div>
+
       {error && <div className="banner error">{error}</div>}
       {vehicles.map((v) => (
         <VehicleRow key={v.vehicle_uid} v={v} onSaved={load} />

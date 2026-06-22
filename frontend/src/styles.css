@@ -468,6 +468,18 @@ h1 {
   border-radius: 8px;
 }
 
+/* inline add-row (Aircrafts / Pilots manual add) */
+.add-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.add-row .input {
+  flex: 1;
+  min-width: 140px;
+}
+
 /* ---------- forms ---------- */
 .form-grid {
   display: grid;

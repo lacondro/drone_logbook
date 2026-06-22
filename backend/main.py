@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -57,6 +58,17 @@ class BulkAssign(BaseModel):
 class VehiclePatch(BaseModel):
     registration_number: str | None = None
     nickname: str | None = None
+    notes: str | None = None
+
+
+class VehicleCreate(BaseModel):
+    registration_number: str | None = None
+    nickname: str | None = None
+    notes: str | None = None
+
+
+class PilotCreate(BaseModel):
+    name: str
     notes: str | None = None
 
 
@@ -392,6 +404,57 @@ def list_vehicles():
     return [dict(r) for r in rows]
 
 
+@app.post("/api/vehicles")
+def create_vehicle(body: VehicleCreate):
+    """Manually add an aircraft (not derived from a log). Gets a synthetic uid."""
+    if not (body.registration_number or body.nickname):
+        raise HTTPException(
+            status_code=400, detail="registration number or nickname required"
+        )
+    uid = "manual-" + uuid.uuid4().hex[:12]
+    now = _now()
+    conn = db.get_conn()
+    try:
+        conn.execute(
+            """INSERT INTO vehicles
+               (vehicle_uid, registration_number, nickname, notes, created_at, updated_at)
+               VALUES (?,?,?,?,?,?)""",
+            (uid, body.registration_number, body.nickname, body.notes, now, now),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    db.backup_active()
+    return {"vehicle_uid": uid}
+
+
+@app.delete("/api/vehicles/{vehicle_uid:path}")
+def delete_vehicle(vehicle_uid: str):
+    """Delete an aircraft. Only allowed when no flight references it (reassign
+    those flights first), so log-derived data is never orphaned."""
+    conn = db.get_conn()
+    try:
+        row = conn.execute(
+            "SELECT vehicle_uid FROM vehicles WHERE vehicle_uid = ?", (vehicle_uid,)
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="aircraft not found")
+        n = conn.execute(
+            "SELECT COUNT(*) AS c FROM flights WHERE vehicle_uid = ?", (vehicle_uid,)
+        ).fetchone()["c"]
+        if n:
+            raise HTTPException(
+                status_code=409,
+                detail=f"{n} flight(s) still assigned — reassign them first",
+            )
+        conn.execute("DELETE FROM vehicles WHERE vehicle_uid = ?", (vehicle_uid,))
+        conn.commit()
+    finally:
+        conn.close()
+    db.backup_active()
+    return {"deleted": True}
+
+
 @app.patch("/api/vehicles/{vehicle_uid:path}")
 def patch_vehicle(vehicle_uid: str, patch: VehiclePatch):
     fields = patch.model_dump(exclude_unset=True)
@@ -425,11 +488,12 @@ def patch_vehicle(vehicle_uid: str, patch: VehiclePatch):
 
 
 # ---------------------------------------------------------------------------
-# Pilots (derived from the flights.pilot field)
+# Pilots (a managed roster, unioned with names found on flights)
 # ---------------------------------------------------------------------------
 @app.get("/api/pilots")
 def list_pilots():
-    """Per-pilot totals (sorties + flight time) with a per-vehicle breakdown."""
+    """Per-pilot totals (sorties + flight time) with a per-vehicle breakdown.
+    Includes roster pilots that have no flights yet (shown with zero totals)."""
     conn = db.get_conn()
     try:
         rows = conn.execute(
@@ -444,15 +508,26 @@ def list_pilots():
                GROUP BY TRIM(f.pilot), f.vehicle_uid
                ORDER BY TRIM(f.pilot)"""
         ).fetchall()
+        roster = {r["name"] for r in conn.execute("SELECT name FROM pilots").fetchall()}
     finally:
         conn.close()
 
     pilots: dict[str, dict] = {}
-    for r in rows:
-        p = pilots.setdefault(
-            r["pilot"],
-            {"pilot": r["pilot"], "total_sorties": 0, "total_duration_s": 0.0, "vehicles": []},
+
+    def _entry(name):
+        return pilots.setdefault(
+            name,
+            {
+                "pilot": name,
+                "total_sorties": 0,
+                "total_duration_s": 0.0,
+                "in_roster": name in roster,
+                "vehicles": [],
+            },
         )
+
+    for r in rows:
+        p = _entry(r["pilot"])
         p["total_sorties"] += r["sorties"]
         p["total_duration_s"] += r["duration_s"]
         label = r["registration_number"] or r["nickname"] or r["vehicle_uid"] or "Unassigned"
@@ -465,11 +540,58 @@ def list_pilots():
                 "duration_s": r["duration_s"],
             }
         )
+    # Roster pilots with no flights yet still show up.
+    for name in roster:
+        _entry(name)
+
     # Most-active pilots first; vehicles within each by flight time.
     out = sorted(pilots.values(), key=lambda x: (-x["total_duration_s"], x["pilot"]))
     for p in out:
         p["vehicles"].sort(key=lambda v: -v["duration_s"])
     return out
+
+
+@app.post("/api/pilots")
+def create_pilot(body: PilotCreate):
+    """Add a pilot to the roster (so it can be picked before any flight uses it)."""
+    name = (body.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="pilot name required")
+    now = _now()
+    conn = db.get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO pilots (name, notes, created_at, updated_at) VALUES (?,?,?,?) "
+            "ON CONFLICT(name) DO NOTHING",
+            (name, body.notes, now, now),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    db.backup_active()
+    return {"name": name}
+
+
+@app.delete("/api/pilots/{name:path}")
+def delete_pilot(name: str):
+    """Remove a pilot from the roster. Only allowed when no flight uses the name
+    (reassign/clear those flights first) so flight annotations are never lost."""
+    conn = db.get_conn()
+    try:
+        n = conn.execute(
+            "SELECT COUNT(*) AS c FROM flights WHERE TRIM(pilot) = ?", (name.strip(),)
+        ).fetchone()["c"]
+        if n:
+            raise HTTPException(
+                status_code=409,
+                detail=f"{n} flight(s) still use this pilot — reassign them first",
+            )
+        conn.execute("DELETE FROM pilots WHERE name = ?", (name,))
+        conn.commit()
+    finally:
+        conn.close()
+    db.backup_active()
+    return {"deleted": True}
 
 
 @app.get("/api/health")

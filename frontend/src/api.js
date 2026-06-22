@@ -51,7 +51,11 @@ export const api = {
     req("DELETE", `/flights/${id}?delete_file=${deleteFile ? "true" : "false"}`),
   bulkAssign: (ids, fields) => req("POST", "/flights/bulk", { ids, ...fields }),
   listVehicles: () => req("GET", "/vehicles"),
+  createVehicle: (body) => req("POST", "/vehicles", body),
   patchVehicle: (uid, patch) =>
     req("PATCH", `/vehicles/${encodeURIComponent(uid)}`, patch),
+  deleteVehicle: (uid) => req("DELETE", `/vehicles/${encodeURIComponent(uid)}`),
   listPilots: () => req("GET", "/pilots"),
+  createPilot: (name) => req("POST", "/pilots", { name }),
+  deletePilot: (name) => req("DELETE", `/pilots/${encodeURIComponent(name)}`),
 };

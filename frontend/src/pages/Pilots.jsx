@@ -7,14 +7,49 @@ export default function Pilots() {
   const [pilots, setPilots] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [newPilot, setNewPilot] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      setPilots(await api.listPilots());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    api
-      .listPilots()
-      .then(setPilots)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    load();
   }, []);
+
+  async function addPilot() {
+    if (!newPilot.trim()) return;
+    setAdding(true);
+    setError(null);
+    try {
+      await api.createPilot(newPilot.trim());
+      setNewPilot("");
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function removePilot(name) {
+    if (!window.confirm(`Delete pilot "${name}" from the roster?`)) return;
+    setError(null);
+    try {
+      await api.deletePilot(name);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
 
   return (
     <div className="page">
@@ -23,8 +58,27 @@ export default function Pilots() {
         {loading && <span className="muted">loading…</span>}
       </div>
       <p className="muted">
-        Flight totals per pilot, derived from the pilot recorded on each flight.
+        Flight totals per pilot. Add pilots to the roster below; pilots with no
+        flights can be deleted.
       </p>
+
+      <div className="card add-row">
+        <input
+          className="input"
+          placeholder="Pilot name"
+          value={newPilot}
+          onChange={(e) => setNewPilot(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && addPilot()}
+        />
+        <button
+          className="btn primary"
+          onClick={addPilot}
+          disabled={adding || !newPilot.trim()}
+        >
+          {adding ? "…" : "+ Add pilot"}
+        </button>
+      </div>
+
       {error && <div className="banner error">{error}</div>}
 
       {pilots.map((p) => (
@@ -46,6 +100,18 @@ export default function Pilots() {
                 <span className="stat-val">{p.vehicles.length}</span>
                 <span className="stat-lbl">aircraft</span>
               </span>
+              <button
+                className="btn danger sm"
+                onClick={() => removePilot(p.pilot)}
+                disabled={p.total_sorties > 0}
+                title={
+                  p.total_sorties > 0
+                    ? "Reassign/clear this pilot's flights before deleting"
+                    : "Delete this pilot from the roster"
+                }
+              >
+                Delete
+              </button>
             </div>
           </div>
 

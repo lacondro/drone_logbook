@@ -30,6 +30,10 @@
   그리고 **Logged Messages** 테이블.
 - **기체 관리**: 감지된 기체 UID에 등록번호/별명/메모를 매핑, 기체별 필터,
   비행을 다른 기체로 **수동 재할당**(ArduPilot은 깔끔한 UUID가 없어 보완).
+  **Aircrafts** 페이지에서 기체를 **직접 추가**(로그 없이도)하거나, 비행이 없는
+  기체를 **삭제**할 수 있음.
+- **조종사 로스터**: **Pilots** 페이지에서 조종사를 **추가/삭제**(로스터). 비행에
+  쓰인 조종사는 자동 집계되고, 비행이 없는 로스터 항목만 삭제 가능.
 - **비행별 조종사 / 특이사항**: 로그 파일에 없는 데이터이므로 SQLite에 저장.
 - **다중 선택 일괄 지정**: 리스트에서 여러 로그를 체크해 **조종사·기체를 한 번에**
   지정(예: 같은 비행일에 시동만 한 로그들을 묶어 일괄 처리). 페이지를 넘어가도
@@ -261,7 +265,12 @@ drone_logbook/
 | POST   | `/api/flights/bulk` | `{ids, pilot?, vehicle_uid?}` 여러 비행에 조종사/기체 일괄 지정 |
 | DELETE | `/api/flights/{id}` | 비행 삭제. `?delete_file=true`면 디스크의 로그 파일도 삭제(로그북 폴더 내 파일만, 안전) |
 | GET    | `/api/vehicles` | 기체 목록(+비행 수, 마지막 비행) |
+| POST   | `/api/vehicles` | 기체 수동 추가(`registration_number`/`nickname`/`notes`) → 합성 UID 생성 |
 | PATCH  | `/api/vehicles/{uid}` | `registration_number` / `nickname` / `notes` 수정 |
+| DELETE | `/api/vehicles/{uid}` | 기체 삭제(비행 0건일 때만; 사용 중이면 409) |
+| GET    | `/api/pilots` | 조종사별 집계(로스터 + 비행에서 파생, 0건 로스터 포함) |
+| POST   | `/api/pilots` | 조종사 로스터 추가(`{name}`) |
+| DELETE | `/api/pilots/{name}` | 조종사 로스터 삭제(비행 0건일 때만; 사용 중이면 409) |
 
 ---
 

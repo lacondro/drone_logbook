@@ -92,6 +92,14 @@ CREATE INDEX IF NOT EXISTS idx_flights_start   ON flights(log_start_utc);
 
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 
+-- Pilot roster (lets pilots be managed independently of flights).
+CREATE TABLE IF NOT EXISTS pilots (
+    name        TEXT PRIMARY KEY,
+    notes       TEXT,
+    created_at  TEXT,
+    updated_at  TEXT
+);
+
 CREATE TABLE IF NOT EXISTS geocode (
     key        TEXT PRIMARY KEY,   -- "lat,lon" rounded to ~1 km
     name       TEXT,

@@ -221,6 +221,15 @@ export default function Logbook() {
     }
   }
 
+  function exportCsv() {
+    const url = api.exportFlightsUrl({ ...filters, sort: sort.field, order: sort.order });
+    const a = document.createElement("a");
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   function setF(k, v) {
     setFilters((f) => ({ ...f, [k]: v }));
   }
@@ -352,6 +361,14 @@ export default function Logbook() {
               {loading && <span className="muted"> · loading…</span>}
             </span>
             <span className="sort-ctrl">
+              <button
+                className="btn sm"
+                onClick={exportCsv}
+                disabled={!flights.length}
+                title="Export the current filtered list to CSV (Excel)"
+              >
+                Export CSV
+              </button>
               <select
                 className="input sm"
                 value={sort.field}

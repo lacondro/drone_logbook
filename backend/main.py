@@ -189,16 +189,9 @@ _SORT_FIELDS = {
 }
 
 
-@app.get("/api/flights")
-def list_flights(
-    vehicle_uid: str | None = None,
-    stack: str | None = None,
-    date_from: str | None = None,
-    date_to: str | None = None,
-    q: str | None = None,
-    sort: str = "date",
-    order: str = "desc",
-):
+def _flight_filters(vehicle_uid, stack, date_from, date_to, q):
+    """Build the WHERE clause + params shared by list and export, so an export
+    always matches exactly what the list is showing."""
     where, params = [], []
     if vehicle_uid:
         where.append("f.vehicle_uid = ?")
@@ -220,15 +213,32 @@ def list_flights(
         )
         like = f"%{q}%"
         params += [like] * 6
+    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+    return where_sql, params
 
+
+def _flight_order(sort, order):
     sort_col = _SORT_FIELDS.get(sort, "f.log_start_utc")
     order_sql = "ASC" if order.lower() == "asc" else "DESC"
-    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
     # NULLs (e.g. failed parses with no date) sort last.
+    return f"ORDER BY ({sort_col} IS NULL), {sort_col} {order_sql}"
+
+
+@app.get("/api/flights")
+def list_flights(
+    vehicle_uid: str | None = None,
+    stack: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    q: str | None = None,
+    sort: str = "date",
+    order: str = "desc",
+):
+    where_sql, params = _flight_filters(vehicle_uid, stack, date_from, date_to, q)
     sql = (
         f"SELECT {_LIST_COLUMNS} FROM flights f "
         f"LEFT JOIN vehicles v ON f.vehicle_uid = v.vehicle_uid "
-        f"{where_sql} ORDER BY ({sort_col} IS NULL), {sort_col} {order_sql}"
+        f"{where_sql} {_flight_order(sort, order)}"
     )
 
     conn = db.get_conn()
@@ -237,6 +247,70 @@ def list_flights(
     finally:
         conn.close()
     return [_flight_list_row(r) for r in rows]
+
+
+# Columns exported to CSV: (header, SQL expression).
+_EXPORT_COLUMNS = [
+    ("Date/Time (UTC)", "f.log_start_utc"),
+    ("Location", "f.start_location"),
+    ("Stack", "f.stack"),
+    ("Aircraft", "COALESCE(v.registration_number, v.nickname, f.vehicle_uid)"),
+    ("Vehicle UID", "f.vehicle_uid"),
+    ("Pilot", "f.pilot"),
+    ("Duration (s)", "f.duration_s"),
+    ("Distance (m)", "f.distance_m"),
+    ("Max Alt Diff (m)", "f.max_alt_diff_m"),
+    ("Avg Speed (km/h)", "f.avg_speed_kmh"),
+    ("Max Speed (km/h)", "f.max_speed_kmh"),
+    ("Max Tilt (deg)", "f.max_tilt_deg"),
+    ("Status", "f.parse_status"),
+    ("File", "f.file_name"),
+    ("Remarks", "f.remarks"),
+]
+
+
+@app.get("/api/flights/export")
+def export_flights(
+    vehicle_uid: str | None = None,
+    stack: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    q: str | None = None,
+    sort: str = "date",
+    order: str = "desc",
+):
+    """Export the filtered flight list as CSV (matches the list view's filters)."""
+    import csv
+    import io
+
+    from fastapi.responses import Response
+
+    where_sql, params = _flight_filters(vehicle_uid, stack, date_from, date_to, q)
+    select = ", ".join(f"{expr} AS c{i}" for i, (_, expr) in enumerate(_EXPORT_COLUMNS))
+    sql = (
+        f"SELECT {select} FROM flights f "
+        f"LEFT JOIN vehicles v ON f.vehicle_uid = v.vehicle_uid "
+        f"{where_sql} {_flight_order(sort, order)}"
+    )
+    conn = db.get_conn()
+    try:
+        rows = conn.execute(sql, params).fetchall()
+    finally:
+        conn.close()
+
+    buf = io.StringIO()
+    buf.write("﻿")  # UTF-8 BOM so Excel reads Hangul correctly
+    w = csv.writer(buf)
+    w.writerow([h for h, _ in _EXPORT_COLUMNS])
+    for r in rows:
+        w.writerow([r[f"c{i}"] for i in range(len(_EXPORT_COLUMNS))])
+
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="flights_{stamp}.csv"'},
+    )
 
 
 @app.post("/api/flights/bulk")

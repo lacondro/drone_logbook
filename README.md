@@ -38,6 +38,9 @@
 - **다중 선택 일괄 지정**: 리스트에서 여러 로그를 체크해 **조종사·기체를 한 번에**
   지정(예: 같은 비행일에 시동만 한 로그들을 묶어 일괄 처리). 페이지를 넘어가도
   선택이 유지됨.
+- **CSV 내보내기**: 현재 **필터(기체·스택·날짜·검색)가 적용된 모든 로그**를
+  CSV로 내보냄(예: 특정 날짜·PX4·특정 조종사 기록만). Excel에서 바로 열리도록
+  UTF-8 BOM 포함(한글 안 깨짐).
 - **비행 삭제**: 상세 뷰에서 비행을 로그북에서 제거 + (확인 후) **디스크의 로그
   파일까지 영구 삭제**. "시동만 해본 로그" 정리에 유용 — 파일을 지워야 재스캔에서
   다시 살아나지 않음.
@@ -260,6 +263,7 @@ drone_logbook/
 | POST   | `/api/scan` | `{path, recursive}` 폴더 스캔, `{scanned, parsed_new, skipped_cached, failed, duplicates, pruned_missing, folder, db_path}` 반환 (`duplicates`=중복으로 스킵, `pruned_missing`=사라진 파일의 행 자동 제거 수) |
 | POST   | `/api/upload` | multipart 파일 업로드(`.ulg`/`.bin`) → 활성 로그북 폴더에 저장 후 스캔, `{uploaded, skipped, duplicates, ...scan}` 반환 |
 | GET    | `/api/flights` | 필터(`vehicle_uid`,`stack`,`date_from`,`date_to`,`q`=파일/조종사/특이사항/위치/등록번호)·정렬(`sort`,`order`) 리스트 |
+| GET    | `/api/flights/export` | 동일 필터·정렬을 적용한 결과를 **CSV**(UTF-8 BOM)로 다운로드 |
 | GET    | `/api/flights/{id}` | 상세(트랙 GeoJSON + logged messages 포함) |
 | PATCH  | `/api/flights/{id}` | `pilot` / `remarks` / `vehicle_uid`(재할당) 수정 |
 | POST   | `/api/flights/bulk` | `{ids, pilot?, vehicle_uid?}` 여러 비행에 조종사/기체 일괄 지정 |

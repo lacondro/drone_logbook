@@ -45,6 +45,13 @@ export const api = {
     ).toString();
     return req("GET", "/flights" + (qs ? `?${qs}` : ""));
   },
+  // Builds the CSV export URL for the current filters (browser navigates to it).
+  exportFlightsUrl: (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== "" && v != null)
+    ).toString();
+    return `${BASE}/flights/export${qs ? `?${qs}` : ""}`;
+  },
   getFlight: (id) => req("GET", `/flights/${id}`),
   patchFlight: (id, patch) => req("PATCH", `/flights/${id}`, patch),
   deleteFlight: (id, deleteFile = false) =>

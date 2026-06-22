@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS flights (
     file_path          TEXT UNIQUE,
     file_name          TEXT,
     file_hash          TEXT,
+    content_hash       TEXT,
     stack              TEXT,
     vehicle_uid        TEXT,
 
@@ -86,6 +87,7 @@ CREATE TABLE IF NOT EXISTS flights (
 
 CREATE INDEX IF NOT EXISTS idx_flights_vehicle ON flights(vehicle_uid);
 CREATE INDEX IF NOT EXISTS idx_flights_start   ON flights(log_start_utc);
+CREATE INDEX IF NOT EXISTS idx_flights_content ON flights(content_hash);
 
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
 
@@ -203,6 +205,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
         added = True
     if "start_location" not in cols:
         conn.execute("ALTER TABLE flights ADD COLUMN start_location TEXT")
+    if "content_hash" not in cols:
+        conn.execute("ALTER TABLE flights ADD COLUMN content_hash TEXT")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_flights_content ON flights(content_hash)"
+    )
 
     # Recompute counts if a column was just added OR the classification logic
     # version changed since this DB was last written.

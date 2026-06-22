@@ -1,6 +1,7 @@
 """Folder scanning: discover logs, parse new/changed ones, cache in SQLite."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from datetime import datetime, timezone
@@ -20,6 +21,40 @@ def file_hash(path: Path) -> str:
     """Cheap change-detection token: size + mtime (per spec §5)."""
     st = path.stat()
     return f"{st.st_size}:{int(st.st_mtime)}"
+
+
+def content_hash(path: Path) -> str:
+    """SHA-256 of the file's bytes — identifies byte-identical logs regardless
+    of filename, so the same log uploaded under two names is detected."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _find_duplicate(conn, chash, result, fpath):
+    """Return the id of an already-stored flight that this file duplicates, or
+    None. Two signals: identical bytes (content_hash), or the same flight logged
+    under a different name/format (same vehicle_uid + log_start_utc)."""
+    if chash:
+        row = conn.execute(
+            "SELECT id FROM flights WHERE content_hash = ? AND file_path != ? LIMIT 1",
+            (chash, fpath),
+        ).fetchone()
+        if row:
+            return row["id"]
+    vu = result.get("vehicle_uid")
+    ts = result.get("log_start_utc")
+    if vu and ts:
+        row = conn.execute(
+            "SELECT id FROM flights WHERE vehicle_uid = ? AND log_start_utc = ? "
+            "AND file_path != ? LIMIT 1",
+            (vu, ts, fpath),
+        ).fetchone()
+        if row:
+            return row["id"]
+    return None
 
 
 def discover(folder: Path, recursive: bool) -> list[Path]:
@@ -100,7 +135,7 @@ def scan_folder(folder_path: str, recursive: bool = True) -> dict:
     files = discover(folder, recursive)
     summary = {
         "scanned": len(files), "parsed_new": 0, "skipped_cached": 0,
-        "failed": 0, "pruned_missing": 0,
+        "failed": 0, "duplicates": 0, "pruned_missing": 0,
     }
 
     conn = get_conn()
@@ -109,13 +144,35 @@ def scan_folder(folder_path: str, recursive: bool = True) -> dict:
             fpath = str(path.resolve())
             fhash = file_hash(path)
             existing = conn.execute(
-                "SELECT id, file_hash FROM flights WHERE file_path = ?", (fpath,)
+                "SELECT id, file_hash, content_hash FROM flights WHERE file_path = ?",
+                (fpath,),
             ).fetchone()
             if existing and existing["file_hash"] == fhash:
+                # Unchanged file: backfill its content hash once (older DBs).
+                if existing["content_hash"] is None:
+                    try:
+                        conn.execute(
+                            "UPDATE flights SET content_hash = ? WHERE id = ?",
+                            (content_hash(path), existing["id"]),
+                        )
+                        conn.commit()
+                    except OSError:
+                        pass
                 summary["skipped_cached"] += 1
                 continue
 
             result = _parse_one(path)
+            try:
+                chash = content_hash(path)
+            except OSError:
+                chash = None
+
+            # New file (no row at this path) that duplicates another flight —
+            # identical bytes, or the same flight under a different name/format.
+            if existing is None and _find_duplicate(conn, chash, result, fpath) is not None:
+                summary["duplicates"] += 1
+                continue
+
             if result.get("parse_status") == "error":
                 summary["failed"] += 1
             else:
@@ -127,7 +184,10 @@ def scan_folder(folder_path: str, recursive: bool = True) -> dict:
             )
 
             row = _result_to_row(result)
-            row.update(file_path=fpath, file_name=path.name, file_hash=fhash, updated_at=_now())
+            row.update(
+                file_path=fpath, file_name=path.name, file_hash=fhash,
+                content_hash=chash, updated_at=_now(),
+            )
 
             if existing:
                 # Re-parse of a changed file: refresh parse-derived columns only.

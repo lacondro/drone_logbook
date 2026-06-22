@@ -185,6 +185,7 @@ export default function Logbook() {
       const r = await api.scan(scanPath.trim(), recursive);
       setScanMsg(
         `Scanned ${r.scanned} · new ${r.parsed_new} · cached ${r.skipped_cached} · failed ${r.failed}` +
+          (r.duplicates ? ` · dup ${r.duplicates}` : "") +
           (r.pruned_missing ? ` · removed ${r.pruned_missing} missing` : "")
       );
       setActiveFolder(r.folder);
@@ -208,7 +209,8 @@ export default function Logbook() {
       setScanMsg(
         `Uploaded ${r.uploaded}` +
           (r.skipped?.length ? ` · skipped ${r.skipped.length} (not .ulg/.bin)` : "") +
-          ` · new ${r.parsed_new} · cached ${r.skipped_cached} · failed ${r.failed}`
+          ` · new ${r.parsed_new} · cached ${r.skipped_cached} · failed ${r.failed}` +
+          (r.duplicates ? ` · dup ${r.duplicates}` : "")
       );
       if (r.folder) setActiveFolder(r.folder);
       await load();

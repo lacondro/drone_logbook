@@ -18,6 +18,9 @@
 - **업로드**: 브라우저에서 로컬 `.ulg`/`.bin`을 **서버(NAS) 로그 폴더로 직접
   업로드**. NAS 컨테이너는 클라이언트 PC 디스크를 못 읽으므로, 원격에서 로그를
   올릴 때 유용. 업로드 후 자동으로 스캔되어 리스트에 반영.
+- **중복 방지**: 같은 로그가 이름만 다르거나 다른 포맷으로 들어와도 한 번만
+  등록. ① **내용 해시(SHA-256)**로 바이트가 같은 파일, ② **기체 UID + 시작시각**
+  으로 같은 비행을 감지해 스킵(스캔 결과에 `dup N`으로 표시).
 - **포맷 자동 판별 (매직 바이트 기준)**: `.bin` 파일이라도 내용이 PX4 ULog인지
   ArduPilot DataFlash인지 헤더로 판별해 올바른 파서로 라우팅. (확장자 무시)
 - **리스트 뷰**: 날짜 / 비행시간 / 거리 / 조종사 / 파일명 정렬, 기체·스택·
@@ -250,8 +253,8 @@ drone_logbook/
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
 | GET    | `/api/status` | 현재 활성 로그북 폴더 / DB 경로 / 비행 수 |
-| POST   | `/api/scan` | `{path, recursive}` 폴더 스캔, `{scanned, parsed_new, skipped_cached, failed, pruned_missing, folder, db_path}` 반환 (`pruned_missing`=사라진 파일의 행 자동 제거 수) |
-| POST   | `/api/upload` | multipart 파일 업로드(`.ulg`/`.bin`) → 활성 로그북 폴더에 저장 후 스캔, `{uploaded, skipped, ...scan}` 반환 |
+| POST   | `/api/scan` | `{path, recursive}` 폴더 스캔, `{scanned, parsed_new, skipped_cached, failed, duplicates, pruned_missing, folder, db_path}` 반환 (`duplicates`=중복으로 스킵, `pruned_missing`=사라진 파일의 행 자동 제거 수) |
+| POST   | `/api/upload` | multipart 파일 업로드(`.ulg`/`.bin`) → 활성 로그북 폴더에 저장 후 스캔, `{uploaded, skipped, duplicates, ...scan}` 반환 |
 | GET    | `/api/flights` | 필터(`vehicle_uid`,`stack`,`date_from`,`date_to`,`q`=파일/조종사/특이사항/위치/등록번호)·정렬(`sort`,`order`) 리스트 |
 | GET    | `/api/flights/{id}` | 상세(트랙 GeoJSON + logged messages 포함) |
 | PATCH  | `/api/flights/{id}` | `pilot` / `remarks` / `vehicle_uid`(재할당) 수정 |
@@ -285,6 +288,11 @@ drone_logbook/
   교정하세요.
 - **시각**: GPS 기준 UTC로 저장하고 로컬 시간으로 표시합니다. GPS 픽스가 없는
   로그는 절대 시각/트랙/거리가 없으며 `partial`로 표시됩니다.
+- **중복 판정**: 바이트가 같은 파일은 내용 해시로 항상 잡지만, **같은 비행 판정은
+  기체 UID + 시작시각**에 의존합니다. 따라서 GPS(시작시각)가 없는 로그는 내용
+  해시로만 비교되고, 드물게 같은 기체가 같은 시각으로 기록된 서로 다른 로그를
+  같다고 볼 수 있습니다. 중복은 **새로 추가만 막을 뿐**, 기존 파일/행은 삭제하지
+  않습니다.
 - **시작 위치(시군구)**: 스캔 후 시작 GPS 좌표를 OpenStreetMap Nominatim으로
   역지오코딩해 시/군/구(예: 영월군, 강동구)를 채웁니다. 인터넷이 필요하며,
   좌표를 ~1 km로 반올림해 캐시(같은 비행장은 1회 호출)하고 1초 간격으로

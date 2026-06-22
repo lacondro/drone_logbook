@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -99,6 +99,52 @@ def scan(req: ScanRequest):
     db_path = db.get_db_path()
     summary["folder"] = str(db_path.parent)
     summary["db_path"] = str(db_path)
+    return summary
+
+
+@app.post("/api/upload")
+async def upload_logs(files: list[UploadFile] = File(...)):
+    """Save uploaded log files into the active logbook folder, then scan.
+
+    Lets a browser push local `.ulg`/`.bin` logs to the server (e.g. the NAS),
+    since the backend can only read server-side paths, not the client's disk.
+    """
+    folder = db.get_db_path().parent
+    folder.mkdir(parents=True, exist_ok=True)
+
+    saved = 0
+    skipped: list[str] = []
+    for uf in files:
+        name = Path(uf.filename or "").name  # strip any directory component
+        if not name:
+            continue
+        if Path(name).suffix.lower() not in scanner.LOG_EXTENSIONS:
+            skipped.append(name)
+            continue
+        dest = folder / name
+        with open(dest, "wb") as out:
+            while chunk := await uf.read(1024 * 1024):
+                out.write(chunk)
+        saved += 1
+
+    # Parse whatever is now in the folder (new files get added/refreshed).
+    summary = scanner.scan_folder(str(folder), recursive=True)
+    conn = db.get_conn()
+    try:
+        summary["geocoded"] = geocode.backfill(conn)
+    except Exception:  # noqa: BLE001
+        summary["geocoded"] = 0
+    finally:
+        conn.close()
+    db.backup_active()
+
+    db_path = db.get_db_path()
+    summary.update(
+        uploaded=saved,
+        skipped=skipped,
+        folder=str(db_path.parent),
+        db_path=str(db_path),
+    )
     return summary
 
 

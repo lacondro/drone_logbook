@@ -24,6 +24,21 @@ async function req(method, url, body) {
 export const api = {
   status: () => req("GET", "/status"),
   scan: (path, recursive) => req("POST", "/scan", { path, recursive }),
+  uploadLogs: async (files) => {
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f);
+    const res = await fetch(BASE + "/upload", { method: "POST", body: fd });
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        detail = (await res.json()).detail || detail;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(detail);
+    }
+    return res.json();
+  },
   listFlights: (params = {}) => {
     const qs = new URLSearchParams(
       Object.entries(params).filter(([, v]) => v !== "" && v != null)

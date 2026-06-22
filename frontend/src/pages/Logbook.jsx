@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api.js";
 import FlightDetail from "./FlightDetail.jsx";
@@ -83,6 +83,8 @@ export default function Logbook() {
   const [scanning, setScanning] = useState(false);
   const [scanMsg, setScanMsg] = useState(null);
   const [activeFolder, setActiveFolder] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     api
@@ -194,6 +196,29 @@ export default function Logbook() {
     }
   }
 
+  async function onUploadPick(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ""; // allow re-picking the same files
+    if (!files.length) return;
+    setUploading(true);
+    setScanMsg(null);
+    setError(null);
+    try {
+      const r = await api.uploadLogs(files);
+      setScanMsg(
+        `Uploaded ${r.uploaded}` +
+          (r.skipped?.length ? ` · skipped ${r.skipped.length} (not .ulg/.bin)` : "") +
+          ` · new ${r.parsed_new} · cached ${r.skipped_cached} · failed ${r.failed}`
+      );
+      if (r.folder) setActiveFolder(r.folder);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
   function setF(k, v) {
     setFilters((f) => ({ ...f, [k]: v }));
   }
@@ -224,6 +249,22 @@ export default function Logbook() {
           </label>
           <button className="btn primary" onClick={runScan} disabled={scanning}>
             {scanning ? "Scanning…" : "Scan"}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".ulg,.bin"
+            multiple
+            style={{ display: "none" }}
+            onChange={onUploadPick}
+          />
+          <button
+            className="btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            title="Upload local .ulg/.bin logs to the server's logbook folder"
+          >
+            {uploading ? "Uploading…" : "Upload"}
           </button>
         </div>
         {scanMsg && <div className="scan-result">{scanMsg}</div>}

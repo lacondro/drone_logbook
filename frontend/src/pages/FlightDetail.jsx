@@ -146,7 +146,10 @@ export default function FlightDetail({ id: propId, onUpdated }) {
             label="Vehicle Life Flight Time"
             value={f.vehicle_life_s != null ? fmtDuration(f.vehicle_life_s) : "—"}
           />
-          <InfoRow label="Vehicle UID" value={<code>{f.vehicle_uid || "—"}</code>} />
+          <InfoRow
+            label="Flight Controller (HW ID)"
+            value={<code>{f.hwid || "—"}</code>}
+          />
         </section>
 
         <section className="card">
@@ -190,8 +193,9 @@ export default function FlightDetail({ id: propId, onUpdated }) {
               ))}
             </select>
             <span className="hint">
-              ArduPilot auto-matching is approximate — reassign here if needed.{" "}
-              <Link to="/vehicles">Manage registrations →</Link>
+              The same flight controller can fly different airframes — reassign
+              here (or bulk-reassign by date range in the list).{" "}
+              <Link to="/vehicles">Manage aircraft →</Link>
             </span>
           </label>
         </div>

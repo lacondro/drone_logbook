@@ -32,6 +32,12 @@
   비행을 다른 기체로 **수동 재할당**(ArduPilot은 깔끔한 UUID가 없어 보완).
   **Aircrafts** 페이지에서 기체를 **직접 추가**(로그 없이도)하거나, 비행이 없는
   기체를 **삭제**할 수 있음.
+- **컨트롤러(hwid) ↔ 기체 분리**: 같은 비행 컨트롤러(픽스호크)를 여러 기체에
+  옮겨 써도 대응. 로그의 **컨트롤러 식별자(hwid)는 따로 보존**하고, **기체
+  (에어프레임)는 사용자가 지정**. 신규 비행은 일단 hwid 기준 기본 기체로 들어오고,
+  스왑한 기간을 **날짜 필터 + 일괄지정**으로 한 번에 재배정 — **재스캔해도 그
+  배정이 유지**됨. 상세 뷰에 `Flight Controller (HW ID)` 표시, 검색창에서 hwid로도
+  조회 가능.
 - **조종사 로스터**: **Pilots** 페이지에서 조종사를 **추가/삭제**(로스터). 비행에
   쓰인 조종사는 자동 집계되고, 비행이 없는 로스터 항목만 삭제 가능.
 - **비행별 조종사 / 특이사항**: 로그 파일에 없는 데이터이므로 SQLite에 저장.
@@ -262,7 +268,7 @@ drone_logbook/
 | GET    | `/api/status` | 현재 활성 로그북 폴더 / DB 경로 / 비행 수 |
 | POST   | `/api/scan` | `{path, recursive}` 폴더 스캔, `{scanned, parsed_new, skipped_cached, failed, duplicates, pruned_missing, folder, db_path}` 반환 (`duplicates`=중복으로 스킵, `pruned_missing`=사라진 파일의 행 자동 제거 수) |
 | POST   | `/api/upload` | multipart 파일 업로드(`.ulg`/`.bin`) → 활성 로그북 폴더에 저장 후 스캔, `{uploaded, skipped, duplicates, ...scan}` 반환 |
-| GET    | `/api/flights` | 필터(`vehicle_uid`,`stack`,`date_from`,`date_to`,`q`=파일/조종사/특이사항/위치/등록번호)·정렬(`sort`,`order`) 리스트 |
+| GET    | `/api/flights` | 필터(`vehicle_uid`,`stack`,`date_from`,`date_to`,`q`=파일/조종사/특이사항/위치/hwid/등록번호)·정렬(`sort`,`order`) 리스트 |
 | GET    | `/api/flights/export` | 동일 필터·정렬을 적용한 결과를 **CSV**(UTF-8 BOM)로 다운로드 |
 | GET    | `/api/flights/{id}` | 상세(트랙 GeoJSON + logged messages 포함) |
 | PATCH  | `/api/flights/{id}` | `pilot` / `remarks` / `vehicle_uid`(재할당) 수정 |
@@ -296,9 +302,13 @@ drone_logbook/
 
 ## 참고 / 한계
 
-- **ArduPilot 기체 식별**: 부팅 배너의 보드 CPU id가 있으면 그것으로, 없으면
-  보드+펌웨어 기반의 약한 id를 사용합니다. 매칭이 틀리면 상세 뷰의 재할당으로
-  교정하세요.
+- **기체 식별과 컨트롤러 스왑**: 로그에서 얻는 식별자(`hwid`)는 **에어프레임이
+  아니라 비행 컨트롤러**의 것입니다(PX4 `sys_uuid` / ArduPilot 보드 CPU id, 없으면
+  보드+펌웨어 기반의 약한 id). 그래서 같은 컨트롤러를 여러 기체에 옮겨 쓰면 로그만
+  으로는 어느 에어프레임인지 알 수 없습니다. 신규 비행은 hwid 기준 기본 기체로
+  들어오니, **스왑한 날짜 구간을 필터해 일괄로 올바른 기체에 재배정**하세요(재스캔
+  해도 유지). 이미 재배정한 비행의 원래 hwid는 보존되지만, 이 기능 도입 *이전*에
+  수동 재할당했던 비행은 원래 hwid를 복구할 수 없습니다.
 - **시각**: GPS 기준 UTC로 저장하고 로컬 시간으로 표시합니다. GPS 픽스가 없는
   로그는 절대 시각/트랙/거리가 없으며 `partial`로 표시됩니다.
 - **중복 판정**: 바이트가 같은 파일은 내용 해시로 항상 잡지만, **같은 비행 판정은

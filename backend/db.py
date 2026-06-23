@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS flights (
     content_hash       TEXT,
     stack              TEXT,
     vehicle_uid        TEXT,
+    hwid               TEXT,
 
     log_start_utc      TEXT,
     duration_s         REAL,
@@ -219,6 +220,15 @@ def _migrate(conn: sqlite3.Connection) -> None:
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_flights_content ON flights(content_hash)"
     )
+    if "hwid" not in cols:
+        conn.execute("ALTER TABLE flights ADD COLUMN hwid TEXT")
+        # Historically vehicle_uid WAS the flight-controller id, so seed hwid from
+        # it (except for manually-reassigned flights, whose original FC is lost).
+        conn.execute(
+            "UPDATE flights SET hwid = vehicle_uid "
+            "WHERE vehicle_uid IS NOT NULL AND vehicle_uid NOT LIKE 'manual-%'"
+        )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_flights_hwid ON flights(hwid)")
 
     # Recompute counts if a column was just added OR the classification logic
     # version changed since this DB was last written.

@@ -33,10 +33,10 @@ def content_hash(path: Path) -> str:
     return h.hexdigest()
 
 
-def _find_duplicate(conn, chash, result, fpath):
+def _find_duplicate(conn, chash, hwid, result, fpath):
     """Return the id of an already-stored flight that this file duplicates, or
     None. Two signals: identical bytes (content_hash), or the same flight logged
-    under a different name/format (same vehicle_uid + log_start_utc)."""
+    under a different name/format (same flight-controller hwid + log_start_utc)."""
     if chash:
         row = conn.execute(
             "SELECT id FROM flights WHERE content_hash = ? AND file_path != ? LIMIT 1",
@@ -44,13 +44,12 @@ def _find_duplicate(conn, chash, result, fpath):
         ).fetchone()
         if row:
             return row["id"]
-    vu = result.get("vehicle_uid")
     ts = result.get("log_start_utc")
-    if vu and ts:
+    if hwid and ts:
         row = conn.execute(
-            "SELECT id FROM flights WHERE vehicle_uid = ? AND log_start_utc = ? "
+            "SELECT id FROM flights WHERE hwid = ? AND log_start_utc = ? "
             "AND file_path != ? LIMIT 1",
-            (vu, ts, fpath),
+            (hwid, ts, fpath),
         ).fetchone()
         if row:
             return row["id"]
@@ -162,6 +161,10 @@ def scan_folder(folder_path: str, recursive: bool = True) -> dict:
                 continue
 
             result = _parse_one(path)
+            # The flight-controller id parsed from the log. vehicle_uid (the
+            # assignable airframe) defaults to it for new flights but is then
+            # user-owned, so moving one FC between airframes is possible.
+            hwid = result.get("vehicle_uid")
             try:
                 chash = content_hash(path)
             except OSError:
@@ -169,7 +172,7 @@ def scan_folder(folder_path: str, recursive: bool = True) -> dict:
 
             # New file (no row at this path) that duplicates another flight —
             # identical bytes, or the same flight under a different name/format.
-            if existing is None and _find_duplicate(conn, chash, result, fpath) is not None:
+            if existing is None and _find_duplicate(conn, chash, hwid, result, fpath) is not None:
                 summary["duplicates"] += 1
                 continue
 
@@ -186,11 +189,13 @@ def scan_folder(folder_path: str, recursive: bool = True) -> dict:
             row = _result_to_row(result)
             row.update(
                 file_path=fpath, file_name=path.name, file_hash=fhash,
-                content_hash=chash, updated_at=_now(),
+                content_hash=chash, hwid=hwid, updated_at=_now(),
             )
 
             if existing:
-                # Re-parse of a changed file: refresh parse-derived columns only.
+                # Re-parse of a changed file: refresh parse-derived columns, but
+                # NEVER clobber the user's airframe assignment.
+                row.pop("vehicle_uid", None)
                 sets = ", ".join(f"{k} = :{k}" for k in row)
                 conn.execute(f"UPDATE flights SET {sets} WHERE id = :id", {**row, "id": existing["id"]})
             else:

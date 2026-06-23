@@ -77,7 +77,7 @@ class PilotCreate(BaseModel):
 # ---------------------------------------------------------------------------
 # Columns returned in list view (track/messages excluded to keep it light).
 _LIST_COLUMNS = (
-    "f.id, f.file_name, f.file_path, f.stack, f.vehicle_uid, f.log_start_utc, "
+    "f.id, f.file_name, f.file_path, f.stack, f.vehicle_uid, f.hwid, f.log_start_utc, "
     "f.start_location, "
     "f.duration_s, f.distance_m, f.max_alt_diff_m, f.max_speed_kmh, f.airframe, "
     "f.hardware, f.pilot, f.remarks, f.parse_status, f.parse_error, "
@@ -208,11 +208,11 @@ def _flight_filters(vehicle_uid, stack, date_from, date_to, q):
     if q:
         where.append(
             "(f.file_name LIKE ? OR f.pilot LIKE ? OR f.remarks LIKE ? "
-            "OR f.start_location LIKE ? "
+            "OR f.start_location LIKE ? OR f.hwid LIKE ? "
             "OR v.registration_number LIKE ? OR v.nickname LIKE ?)"
         )
         like = f"%{q}%"
-        params += [like] * 6
+        params += [like] * 7
     where_sql = ("WHERE " + " AND ".join(where)) if where else ""
     return where_sql, params
 
@@ -255,7 +255,7 @@ _EXPORT_COLUMNS = [
     ("Location", "f.start_location"),
     ("Stack", "f.stack"),
     ("Aircraft", "COALESCE(v.registration_number, v.nickname, f.vehicle_uid)"),
-    ("Vehicle UID", "f.vehicle_uid"),
+    ("Flight Controller (HW ID)", "f.hwid"),
     ("Pilot", "f.pilot"),
     ("Duration (s)", "f.duration_s"),
     ("Distance (m)", "f.distance_m"),

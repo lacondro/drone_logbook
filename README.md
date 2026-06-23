@@ -1,4 +1,4 @@
-# Drone Flight Logbook (비행 로그북)
+# WIZGENE Drone Logbook (비행 로그북)
 
 지정한 폴더의 PX4(`.ulg`) / ArduPilot(`.bin`) 비행 로그를 일괄 로드하여
 **정리·검색·기록**하는 로컬 웹앱입니다. 폴더를 가리키면 모든 로그를 파싱해

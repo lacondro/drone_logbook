@@ -7,7 +7,7 @@ export default function App() {
         <div className="brand">
           <span className="brand-mark">✈</span>
           <div>
-            <div className="brand-title">Drone Flight Logbook</div>
+            <div className="brand-title">WIZGENE Drone Logbook</div>
             <div className="brand-sub">PX4 · ArduPilot log archive</div>
           </div>
         </div>

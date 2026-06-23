@@ -16,7 +16,7 @@ import db
 import geocode
 import scanner
 
-app = FastAPI(title="Drone Flight Logbook", version="1.0")
+app = FastAPI(title="WIZGENE Drone Logbook", version="1.0")
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,4 +1,4 @@
-# Drone Flight Logbook — NAS / Portainer deployment (single shared log folder).
+# WIZGENE Drone Logbook — NAS / Portainer deployment (single shared log folder).
 #
 # This expects the image `drone-logbook:latest` to ALREADY be present in the
 # NAS's Docker (loaded from a tar you built on your PC — see README/instructions),

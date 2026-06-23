@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
     airframe             TEXT,
     hardware             TEXT,
     notes                TEXT,
+    status               TEXT DEFAULT 'active',
     created_at           TEXT,
     updated_at           TEXT
 );
@@ -229,6 +230,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
             "WHERE vehicle_uid IS NOT NULL AND vehicle_uid NOT LIKE 'manual-%'"
         )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_flights_hwid ON flights(hwid)")
+
+    # vehicles.status (active / maintenance / retired)
+    vcols = {r["name"] for r in conn.execute("PRAGMA table_info(vehicles)").fetchall()}
+    if "status" not in vcols:
+        conn.execute("ALTER TABLE vehicles ADD COLUMN status TEXT DEFAULT 'active'")
 
     # Recompute counts if a column was just added OR the classification logic
     # version changed since this DB was last written.

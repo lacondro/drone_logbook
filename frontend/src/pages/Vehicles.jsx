@@ -7,6 +7,7 @@ function VehicleRow({ v, onSaved }) {
   const [reg, setReg] = useState(v.registration_number || "");
   const [nick, setNick] = useState(v.nickname || "");
   const [notes, setNotes] = useState(v.notes || "");
+  const [status, setStatus] = useState(v.status || "active");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState(null);
@@ -14,7 +15,8 @@ function VehicleRow({ v, onSaved }) {
   const dirty =
     reg !== (v.registration_number || "") ||
     nick !== (v.nickname || "") ||
-    notes !== (v.notes || "");
+    notes !== (v.notes || "") ||
+    status !== (v.status || "active");
 
   async function save() {
     setSaving(true);
@@ -24,6 +26,7 @@ function VehicleRow({ v, onSaved }) {
         registration_number: reg,
         nickname: nick,
         notes,
+        status,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -53,7 +56,7 @@ function VehicleRow({ v, onSaved }) {
   }
 
   return (
-    <div className="card vehicle-card">
+    <div className={`card vehicle-card ${status === "retired" ? "retired" : ""}`}>
       <div className="vehicle-head">
         <div>
           <div className="vehicle-title">
@@ -61,6 +64,7 @@ function VehicleRow({ v, onSaved }) {
             <span className={`badge ${v.stack === "px4" ? "badge-px4" : "badge-ap"}`}>
               {v.stack === "px4" ? "PX4" : v.stack === "ardupilot" ? "ArduPilot" : "?"}
             </span>
+            <span className={`status-badge ${status}`}>{status}</span>
           </div>
           <code className="vehicle-uid">{v.vehicle_uid}</code>
         </div>
@@ -92,6 +96,18 @@ function VehicleRow({ v, onSaved }) {
             onChange={(e) => setNick(e.target.value)}
             placeholder="e.g. Ascend-1"
           />
+        </label>
+        <label className="field">
+          <span>Status</span>
+          <select
+            className="input"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="active">Active</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="retired">Retired</option>
+          </select>
         </label>
         <label className="field grow">
           <span>Notes</span>

@@ -59,6 +59,7 @@ class VehiclePatch(BaseModel):
     registration_number: str | None = None
     nickname: str | None = None
     notes: str | None = None
+    status: str | None = None
 
 
 class VehicleCreate(BaseModel):

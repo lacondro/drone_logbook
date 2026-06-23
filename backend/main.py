@@ -504,8 +504,9 @@ def create_vehicle(body: VehicleCreate):
 
 @app.delete("/api/vehicles/{vehicle_uid:path}")
 def delete_vehicle(vehicle_uid: str):
-    """Delete an aircraft. Only allowed when no flight references it (reassign
-    those flights first), so log-derived data is never orphaned."""
+    """Delete an aircraft. Any flights assigned to it move back to their flight
+    controller's default aircraft (by hwid), or become unassigned — so no flight
+    is left pointing at a deleted aircraft."""
     conn = db.get_conn()
     try:
         row = conn.execute(
@@ -513,20 +514,34 @@ def delete_vehicle(vehicle_uid: str):
         ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="aircraft not found")
-        n = conn.execute(
-            "SELECT COUNT(*) AS c FROM flights WHERE vehicle_uid = ?", (vehicle_uid,)
-        ).fetchone()["c"]
-        if n:
-            raise HTTPException(
-                status_code=409,
-                detail=f"{n} flight(s) still assigned — reassign them first",
+        now = _now()
+        affected = conn.execute(
+            "SELECT id, hwid FROM flights WHERE vehicle_uid = ?", (vehicle_uid,)
+        ).fetchall()
+        for f in affected:
+            # Revert to the flight controller's default aircraft, unless that IS
+            # the one being deleted (auto aircraft) → leave unassigned.
+            new_uid = f["hwid"] if (f["hwid"] and f["hwid"] != vehicle_uid) else None
+            if new_uid is not None:
+                exists = conn.execute(
+                    "SELECT 1 FROM vehicles WHERE vehicle_uid = ?", (new_uid,)
+                ).fetchone()
+                if exists is None:  # recreate the FC's default aircraft (FK)
+                    conn.execute(
+                        "INSERT INTO vehicles (vehicle_uid, created_at, updated_at) "
+                        "VALUES (?,?,?)",
+                        (new_uid, now, now),
+                    )
+            conn.execute(
+                "UPDATE flights SET vehicle_uid = ?, updated_at = ? WHERE id = ?",
+                (new_uid, now, f["id"]),
             )
         conn.execute("DELETE FROM vehicles WHERE vehicle_uid = ?", (vehicle_uid,))
         conn.commit()
     finally:
         conn.close()
     db.backup_active()
-    return {"deleted": True}
+    return {"deleted": True, "reassigned": len(affected)}
 
 
 @app.patch("/api/vehicles/{vehicle_uid:path}")

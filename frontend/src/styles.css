@@ -163,6 +163,10 @@ h1 {
 .btn:hover {
   background: #f8fafc;
 }
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 .btn.primary {
   background: var(--brand);
   border-color: var(--brand);

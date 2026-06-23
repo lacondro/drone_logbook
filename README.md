@@ -30,8 +30,8 @@
   그리고 **Logged Messages** 테이블.
 - **기체 관리**: 감지된 기체 UID에 등록번호/별명/메모를 매핑, 기체별 필터,
   비행을 다른 기체로 **수동 재할당**(ArduPilot은 깔끔한 UUID가 없어 보완).
-  **Aircrafts** 페이지에서 기체를 **직접 추가**(로그 없이도)하거나, 비행이 없는
-  기체를 **삭제**할 수 있음.
+  **Aircrafts** 페이지에서 기체를 **직접 추가**(로그 없이도)하거나 **삭제**할 수
+  있음(삭제 시 배정된 비행은 컨트롤러 기본 기체로 되돌아가거나 미할당 처리).
 - **컨트롤러(hwid) ↔ 기체 분리**: 같은 비행 컨트롤러(픽스호크)를 여러 기체에
   옮겨 써도 대응. 로그의 **컨트롤러 식별자(hwid)는 따로 보존**하고, **기체
   (에어프레임)는 사용자가 지정**. 신규 비행은 일단 hwid 기준 기본 기체로 들어오고,
@@ -277,7 +277,7 @@ drone_logbook/
 | GET    | `/api/vehicles` | 기체 목록(+비행 수, 마지막 비행) |
 | POST   | `/api/vehicles` | 기체 수동 추가(`registration_number`/`nickname`/`notes`) → 합성 UID 생성 |
 | PATCH  | `/api/vehicles/{uid}` | `registration_number` / `nickname` / `notes` 수정 |
-| DELETE | `/api/vehicles/{uid}` | 기체 삭제(비행 0건일 때만; 사용 중이면 409) |
+| DELETE | `/api/vehicles/{uid}` | 기체 삭제. 배정된 비행은 컨트롤러(hwid) 기본 기체로 복귀하거나 미할당(`{deleted, reassigned}`) |
 | GET    | `/api/pilots` | 조종사별 집계(로스터 + 비행에서 파생, 0건 로스터 포함) |
 | POST   | `/api/pilots` | 조종사 로스터 추가(`{name}`) |
 | DELETE | `/api/pilots/{name}` | 조종사 로스터 삭제(비행 0건일 때만; 사용 중이면 409) |

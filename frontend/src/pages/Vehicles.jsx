@@ -37,7 +37,12 @@ function VehicleRow({ v, onSaved }) {
 
   async function remove() {
     const label = reg || nick || v.vehicle_uid;
-    if (!window.confirm(`Delete aircraft "${label}"?`)) return;
+    const msg =
+      v.flight_count > 0
+        ? `Delete aircraft "${label}"?\n\n${v.flight_count} flight(s) will move back to ` +
+          `their flight controller's default aircraft (or become unassigned).`
+        : `Delete aircraft "${label}"?`;
+    if (!window.confirm(msg)) return;
     setErr(null);
     try {
       await api.deleteVehicle(v.vehicle_uid);
@@ -105,12 +110,7 @@ function VehicleRow({ v, onSaved }) {
           <button
             className="btn danger sm"
             onClick={remove}
-            disabled={v.flight_count > 0}
-            title={
-              v.flight_count > 0
-                ? "Reassign its flights before deleting"
-                : "Delete this aircraft"
-            }
+            title="Delete this aircraft (its flights move back to their flight controller)"
           >
             Delete
           </button>

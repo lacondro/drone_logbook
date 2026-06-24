@@ -467,7 +467,8 @@ def list_vehicles():
             """SELECT v.*,
                       COUNT(f.id) AS flight_count,
                       COALESCE(SUM(f.duration_s), 0) AS total_duration_s,
-                      MAX(f.log_start_utc) AS last_flight_utc
+                      MAX(f.log_start_utc) AS last_flight_utc,
+                      MAX(f.stack) AS flights_stack
                FROM vehicles v
                LEFT JOIN flights f ON f.vehicle_uid = v.vehicle_uid
                GROUP BY v.vehicle_uid
@@ -476,7 +477,14 @@ def list_vehicles():
         ).fetchall()
     finally:
         conn.close()
-    return [dict(r) for r in rows]
+    out = []
+    for r in rows:
+        d = dict(r)
+        # Manual aircraft have no stack of their own — show their flights' stack.
+        d["stack"] = d.get("stack") or d.pop("flights_stack", None)
+        d.pop("flights_stack", None)
+        out.append(d)
+    return out
 
 
 @app.post("/api/vehicles")
@@ -589,7 +597,8 @@ def list_pilots():
         rows = conn.execute(
             """SELECT TRIM(f.pilot) AS pilot,
                       f.vehicle_uid AS vehicle_uid,
-                      v.registration_number, v.nickname, v.stack,
+                      v.registration_number, v.nickname,
+                      COALESCE(v.stack, MAX(f.stack)) AS stack,
                       COUNT(f.id) AS sorties,
                       COALESCE(SUM(f.duration_s), 0) AS duration_s
                FROM flights f

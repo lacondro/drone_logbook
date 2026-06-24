@@ -38,9 +38,9 @@ export function shortUid(uid) {
   return uid.slice(0, 8) + "…" + uid.slice(-6);
 }
 
-// Best display label for the vehicle a flight belongs to.
+// Best display label for the vehicle a flight belongs to (nickname first).
 export function vehicleLabel(f) {
-  if (f.registration_number) return f.registration_number;
   if (f.nickname) return f.nickname;
+  if (f.registration_number) return f.registration_number;
   return shortUid(f.vehicle_uid);
 }
